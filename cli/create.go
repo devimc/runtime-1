@@ -16,6 +16,7 @@ import (
 
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
+	"github.com/kata-containers/runtime/virtcontainers/pkg/unikernel"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -84,6 +85,7 @@ var getKernelParamsFunc = getKernelParams
 func create(containerID, bundlePath, console, pidFilePath string, detach bool,
 	runtimeConfig oci.RuntimeConfig) error {
 	var err error
+	var containerType vc.ContainerType
 
 	// Checks the MUST and MUST NOT from OCI runtime specification
 	if bundlePath, err = validCreateParams(containerID, bundlePath); err != nil {
@@ -95,9 +97,13 @@ func create(containerID, bundlePath, console, pidFilePath string, detach bool,
 		return err
 	}
 
-	containerType, err := ociSpec.ContainerType()
-	if err != nil {
-		return err
+	if filepath.Base(os.Args[0]) == "kata-runtime-unikernel" {
+		containerType = vc.PodUnikernel
+	} else {
+		containerType, err = ociSpec.ContainerType()
+		if err != nil {
+			return err
+		}
 	}
 
 	disableOutput := noNeedForOutput(detach, ociSpec.Process.Terminal)
@@ -112,6 +118,11 @@ func create(containerID, bundlePath, console, pidFilePath string, detach bool,
 		}
 	case vc.PodContainer:
 		process, err = createContainer(ociSpec, containerID, bundlePath, console, disableOutput)
+		if err != nil {
+			return err
+		}
+	case vc.PodUnikernel:
+		process, err = createUnikernelContainer(ociSpec, runtimeConfig, containerID, bundlePath, console, disableOutput)
 		if err != nil {
 			return err
 		}
@@ -269,6 +280,34 @@ func createContainer(ociSpec oci.CompatOCISpec, containerID, bundlePath,
 	}
 
 	return c.Process(), nil
+}
+
+func createUnikernelContainer(ociSpec oci.CompatOCISpec, runtimeConfig oci.RuntimeConfig,
+	containerID, bundlePath, console string, disableOutput bool) (vc.Process, error) {
+
+	unikernelConfig, err := unikernel.Config(ociSpec, runtimeConfig, bundlePath, containerID, console, disableOutput)
+	if err != nil {
+		return vc.Process{}, err
+	}
+
+	unikernel, err := vci.CreateUnikernelContainer(unikernelConfig)
+	if err != nil {
+		return vc.Process{}, err
+	}
+
+	if err := addContainerIDMapping(containerID, unikernel.ID()); err != nil {
+		return vc.Process{}, err
+	}
+
+	// FIXME
+	return vc.Process{}, fmt.Errorf("create unikernel")
+
+	// containers := sandbox.GetAllContainers()
+	// if len(containers) != 1 {
+	// 	return vc.Process{}, fmt.Errorf("BUG: Container list from sandbox is wrong, expecting only one container, found %d containers", len(containers))
+	// }
+
+	// return containers[0].Process(), nil
 }
 
 func createCgroupsFiles(containerID string, cgroupsDirPath string, cgroupsPathList []string, pid int) error {

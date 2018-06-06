@@ -12,6 +12,7 @@ type ContainerType string
 var (
 	PodContainer         ContainerType = "pod_container"
 	PodSandbox           ContainerType = "pod_sandbox"
+	PodUnikernel         ContainerType = "pod_unikernel"
 	UnknownContainerType ContainerType = "unknown_container_type"
 )
 

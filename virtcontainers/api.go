@@ -696,3 +696,11 @@ func PauseContainer(sandboxID, containerID string) error {
 func ResumeContainer(sandboxID, containerID string) error {
 	return togglePauseContainer(sandboxID, containerID, false)
 }
+
+func CreateContainerUnikernel(config UnikernelConfig) (VCUnikernel, error) {
+	u, err := newContainerUnikernel(config)
+}
+
+func StartUnikernelContainer(id string) (VCUnikernel, error) {
+
+}

@@ -135,3 +135,13 @@ func (impl *VCImpl) PauseContainer(sandboxID, containerID string) error {
 func (impl *VCImpl) ResumeContainer(sandboxID, containerID string) error {
 	return ResumeContainer(sandboxID, containerID)
 }
+
+// CreateUnikernelContainer implements the VC function of the same name.
+func (impl *VCImpl) CreateUnikernelContainer(config UnikernelConfig) (VCUnikernel, error) {
+	return CreateUnikernelContainer(config)
+}
+
+// StartUnikernelContainer implements the VC function of the same name.
+func (impl *VCImpl) StartUnikernelContainer(id string) (VCUnikernel, error) {
+	return StartUnikernelContainer(id)
+}

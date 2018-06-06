@@ -40,6 +40,9 @@ type VC interface {
 	UpdateContainer(sandboxID, containerID string, resources specs.LinuxResources) error
 	PauseContainer(sandboxID, containerID string) error
 	ResumeContainer(sandboxID, containerID string) error
+
+	CreateUnikernelContainer(config UnikernelConfig) (VCUnikernel, error)
+	StartUnikernelContainer(id string) (VCUnikernel, error)
 }
 
 // VCSandbox is the Sandbox interface
@@ -81,4 +84,9 @@ type VCContainer interface {
 	Sandbox() VCSandbox
 	Process() Process
 	SetPid(pid int) error
+}
+
+// VCUnikernel
+type VCUnikernel interface {
+	ID() string
 }
