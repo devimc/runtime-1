@@ -1257,6 +1257,25 @@ func (n *Network) Run(networkNSPath string, cb func() error) error {
 	})
 }
 
+func (n *Network) Set(netNSPath string) error {
+	span, _ := n.trace(context.Background(), "run")
+	defer span.Finish()
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	targetNS, err := ns.GetNS(netNSPath)
+	if err != nil {
+		return err
+	}
+
+	if err := targetNS.Set(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Add adds all needed interfaces inside the network namespace.
 func (n *Network) Add(ctx context.Context, config *NetworkConfig, hypervisor hypervisor, hotplug bool) ([]Endpoint, error) {
 	span, _ := n.trace(ctx, "add")

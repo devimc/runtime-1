@@ -609,6 +609,10 @@ func newSandbox(ctx context.Context, sandboxConfig SandboxConfig, factory Factor
 		return nil, err
 	}
 
+	if err := s.network.Set(s.networkNS.NetNsPath); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
