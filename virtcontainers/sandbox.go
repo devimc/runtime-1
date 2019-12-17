@@ -1021,25 +1021,23 @@ func (s *Sandbox) startVM() (err error) {
 
 	s.Logger().Info("Starting VM")
 
-	if err := s.network.Run(s.networkNS.NetNsPath, func() error {
-		if s.factory != nil {
-			vm, err := s.factory.GetVM(ctx, VMConfig{
-				HypervisorType:   s.config.HypervisorType,
-				HypervisorConfig: s.config.HypervisorConfig,
-				AgentType:        s.config.AgentType,
-				AgentConfig:      s.config.AgentConfig,
-				ProxyType:        s.config.ProxyType,
-				ProxyConfig:      s.config.ProxyConfig,
-			})
-			if err != nil {
-				return err
-			}
-
-			return vm.assignSandbox(s)
+	if s.factory != nil {
+		vm, err := s.factory.GetVM(ctx, VMConfig{
+			HypervisorType:   s.config.HypervisorType,
+			HypervisorConfig: s.config.HypervisorConfig,
+			AgentType:        s.config.AgentType,
+			AgentConfig:      s.config.AgentConfig,
+			ProxyType:        s.config.ProxyType,
+			ProxyConfig:      s.config.ProxyConfig,
+		})
+		if err != nil {
+			return err
 		}
 
-		return s.hypervisor.startSandbox(vmStartTimeout)
-	}); err != nil {
+		return vm.assignSandbox(s)
+	}
+
+	if err = s.hypervisor.startSandbox(vmStartTimeout); err != nil {
 		return err
 	}
 
