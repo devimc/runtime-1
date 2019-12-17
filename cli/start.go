@@ -49,6 +49,10 @@ var startCLICommand = cli.Command{
 }
 
 func start(ctx context.Context, containerID string) (vc.VCSandbox, error) {
+	if _, err := katautils.JoinNamespaces(containerID); err != nil {
+		return nil, err
+	}
+
 	span, _ := katautils.Trace(ctx, "start")
 	defer span.Finish()
 

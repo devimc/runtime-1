@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"syscall"
 
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	vf "github.com/kata-containers/runtime/virtcontainers/factory"
@@ -21,6 +22,8 @@ import (
 
 // GetKernelParamsFunc use a variable to allow tests to modify its value
 var GetKernelParamsFunc = getKernelParams
+
+var mountRootfsFunc = mountRootfs
 
 var systemdKernelParam = []vc.Param{
 	{
@@ -105,11 +108,20 @@ func SetEphemeralStorageType(ociSpec specs.Spec) specs.Spec {
 
 // CreateSandbox create a sandbox container
 func CreateSandbox(ctx context.Context, vci vc.VC, ociSpec specs.Spec, runtimeConfig oci.RuntimeConfig, rootFs vc.RootFs,
-	containerID, bundlePath, console string, disableOutput, systemdCgroup, builtIn bool) (_ vc.VCSandbox, _ vc.Process, err error) {
+	containerID, bundlePath, console, consoleSocket string, disableOutput, systemdCgroup, builtIn bool) (_ vc.VCSandbox, _ vc.Process, err error) {
+	if err := NewPersistentNamespaces(containerID, "", ociSpec.Linux.Namespaces); err != nil {
+		return nil, vc.Process{}, err
+	}
+
 	span, ctx := Trace(ctx, "createSandbox")
 	defer span.Finish()
 
-	sandboxConfig, err := oci.SandboxConfig(ociSpec, runtimeConfig, bundlePath, containerID, console, disableOutput, systemdCgroup)
+	consolePath, err := SetupConsole(console, consoleSocket)
+	if err != nil {
+		return nil, vc.Process{}, err
+	}
+
+	sandboxConfig, err := oci.SandboxConfig(ociSpec, runtimeConfig, bundlePath, containerID, consolePath, disableOutput, systemdCgroup)
 	if err != nil {
 		return nil, vc.Process{}, err
 	}
@@ -133,12 +145,13 @@ func CreateSandbox(ctx context.Context, vci vc.VC, ociSpec specs.Spec, runtimeCo
 		sandboxConfig.Containers[0].RootFs = rootFs
 	}
 
-	// Important to create the network namespace before the sandbox is
-	// created, because it is not responsible for the creation of the
-	// netns if it does not exist.
-	if err := SetupNetworkNamespace(&sandboxConfig.NetworkConfig); err != nil {
-		return nil, vc.Process{}, err
-	}
+	// FIXME: remove
+	// // Important to create the network namespace before the sandbox is
+	// // created, because it is not responsible for the creation of the
+	// // netns if it does not exist.
+	// if err := SetupNetworkNamespace(&sandboxConfig.NetworkConfig); err != nil {
+	// 	return nil, vc.Process{}, err
+	// }
 
 	defer func() {
 		// cleanup netns if kata creates it
@@ -212,62 +225,106 @@ func checkForFIPS(sandboxConfig *vc.SandboxConfig) error {
 }
 
 // CreateContainer create a container
-func CreateContainer(ctx context.Context, vci vc.VC, sandbox vc.VCSandbox, ociSpec specs.Spec, rootFs vc.RootFs, containerID, bundlePath, console string, disableOutput, builtIn bool) (vc.Process, error) {
+func CreateContainer(ctx context.Context, vci vc.VC, sandbox vc.VCSandbox, ociSpec specs.Spec, rootFs vc.RootFs, containerID, bundlePath, console, consoleSocket string, disableOutput, builtIn bool) (p vc.Process, err error) {
 	var c vc.VCContainer
+	sandboxID, err := oci.SandboxID(ociSpec)
+	if err != nil {
+		return
+	}
+
+	if err = NewPersistentNamespaces(sandboxID, containerID, ociSpec.Linux.Namespaces); err != nil {
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			if e := RemovePersistentNamespaces(sandboxID, containerID); e != nil {
+				kataUtilsLogger.WithError(e).Warn("Could not remove persisten namespaces")
+			}
+		}
+	}()
 
 	span, ctx := Trace(ctx, "createContainer")
 	defer span.Finish()
 
 	ociSpec = SetEphemeralStorageType(ociSpec)
 
-	contConfig, err := oci.ContainerConfig(ociSpec, bundlePath, containerID, console, disableOutput)
+	var consolePath string
+	consolePath, err = SetupConsole(console, consoleSocket)
 	if err != nil {
-		return vc.Process{}, err
+		return
+	}
+
+	contConfig, err := oci.ContainerConfig(ociSpec, bundlePath, containerID, consolePath, disableOutput)
+	if err != nil {
+		return
 	}
 
 	if !rootFs.Mounted {
 		if rootFs.Source != "" {
-			realPath, err := ResolvePath(rootFs.Source)
+			var realPath string
+			realPath, err = ResolvePath(rootFs.Source)
 			if err != nil {
-				return vc.Process{}, err
+				return
 			}
 			rootFs.Source = realPath
 		}
 		contConfig.RootFs = rootFs
 	}
 
-	sandboxID, err := oci.SandboxID(ociSpec)
+	var rootfs string
+	rootfs, err = mountRootfsFunc(contConfig.RootFs.Source)
 	if err != nil {
-		return vc.Process{}, err
+		return
 	}
+
+	defer func() {
+		if err != nil && rootfs != "" {
+			if e := syscall.Unmount(rootfs, 0); e != nil {
+				kataUtilsLogger.WithError(e).WithField("rootfs", rootfs).Warn("Could not unmount rootfs")
+			}
+		}
+	}()
 
 	span.SetTag("sandbox", sandboxID)
 
 	if builtIn {
 		c, err = sandbox.CreateContainer(contConfig)
 		if err != nil {
-			return vc.Process{}, err
+			return
 		}
 	} else {
 		kataUtilsLogger = kataUtilsLogger.WithField("sandbox", sandboxID)
 
 		sandbox, c, err = vci.CreateContainer(ctx, sandboxID, contConfig)
 		if err != nil {
-			return vc.Process{}, err
+			return
 		}
 
-		if err := AddContainerIDMapping(ctx, containerID, sandboxID); err != nil {
-			return vc.Process{}, err
+		if err = AddContainerIDMapping(ctx, containerID, sandboxID); err != nil {
+			return
 		}
 	}
 
 	// Run pre-start OCI hooks.
-	err = EnterNetNS(sandbox.GetNetNs(), func() error {
-		return PreStartHooks(ctx, ociSpec, containerID, bundlePath)
-	})
-	if err != nil {
-		return vc.Process{}, err
+	if err = PreStartHooks(ctx, ociSpec, containerID, bundlePath); err != nil {
+		return
 	}
 
 	return c.Process(), nil
+}
+
+func mountRootfs(rootfs string) (string, error) {
+	// Sandbox's mount namespaces was created before this container, hence
+	// the rootfs for this container must be mounted to make it visible
+	info, err := GetFsInfo(rootfs)
+	if err != nil {
+		return "", err
+	}
+
+	if err = syscall.Mount(info.Device, info.MountPoint, info.FsType, uintptr(info.Flags), info.Data); err != nil {
+		return "", err
+	}
+
+	return info.MountPoint, nil
 }

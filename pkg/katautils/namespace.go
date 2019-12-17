@@ -122,7 +122,7 @@ type FsInfo struct {
 	Data       string
 }
 
-func closeChannels() {
+func CloseChannels() {
 	C.close_channels()
 }
 
@@ -130,7 +130,7 @@ func GetFsInfo(filesystem string) (FsInfo, error) {
 	return getFsInfoFunc(filesystem)
 }
 
-func newPersistentNamespaces(sandboxID, containerID string, namespaces []spec.LinuxNamespace) error {
+func NewPersistentNamespaces(sandboxID, containerID string, namespaces []spec.LinuxNamespace) error {
 	if sandboxID == "" {
 		return fmt.Errorf("Missing sandbox ID")
 	}

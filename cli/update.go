@@ -129,6 +129,15 @@ other options are ignored.
 		},
 	},
 	Action: func(context *cli.Context) error {
+		if !context.Args().Present() {
+			return fmt.Errorf("Missing container ID, should at least provide one")
+		}
+
+		containerID := context.Args().First()
+		if _, err := katautils.JoinNamespaces(containerID); err != nil {
+			return err
+		}
+
 		ctx, err := cliContextToContext(context)
 		if err != nil {
 			return err
@@ -136,12 +145,6 @@ other options are ignored.
 
 		span, _ := katautils.Trace(ctx, "update")
 		defer span.Finish()
-
-		if !context.Args().Present() {
-			return fmt.Errorf("Missing container ID, should at least provide one")
-		}
-
-		containerID := context.Args().First()
 
 		kataLog = kataLog.WithField("container", containerID)
 		setExternalLoggers(ctx, kataLog)

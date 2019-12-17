@@ -4,15 +4,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package main
+package katautils
 
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"syscall"
 	"unsafe"
 
+	"github.com/opencontainers/runc/libcontainer/utils"
 	"golang.org/x/sys/unix"
 )
 
@@ -42,7 +44,7 @@ func ConsoleFromFile(f *os.File) *Console {
 
 // NewConsole returns an initialized console that can be used within a container by copying bytes
 // from the master side to the slave that is attached as the tty for the container's init process.
-func newConsole() (*Console, error) {
+func NewConsole() (*Console, error) {
 	master, err := os.OpenFile(ptmxPath, unix.O_RDWR|unix.O_NOCTTY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, err
@@ -131,4 +133,43 @@ func saneTerminal(terminal *os.File) error {
 	}
 
 	return nil
+}
+
+func SetupConsole(consolePath, consoleSockPath string) (string, error) {
+	if consolePath != "" {
+		return consolePath, nil
+	}
+
+	if consoleSockPath == "" {
+		return "", nil
+	}
+
+	console, err := NewConsole()
+	if err != nil {
+		return "", err
+	}
+	defer console.Close()
+
+	// Open the socket path provided by the caller
+	conn, err := net.Dial("unix", consoleSockPath)
+	if err != nil {
+		return "", err
+	}
+
+	uConn, ok := conn.(*net.UnixConn)
+	if !ok {
+		return "", fmt.Errorf("casting to *net.UnixConn failed")
+	}
+
+	socket, err := uConn.File()
+	if err != nil {
+		return "", err
+	}
+
+	// Send the parent fd through the provided socket
+	if err := utils.SendFd(socket, console.File().Name(), console.File().Fd()); err != nil {
+		return "", err
+	}
+
+	return console.Path(), nil
 }

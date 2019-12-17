@@ -9,7 +9,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/kata-containers/runtime/pkg/katautils"
 	vc "github.com/kata-containers/runtime/virtcontainers"
-	"github.com/opencontainers/runc/libcontainer/utils"
 )
 
 // Contants related to cgroup memory directory
@@ -121,45 +119,6 @@ func isCgroupMounted(cgroupPath string) bool {
 	}
 
 	return true
-}
-
-func setupConsole(consolePath, consoleSockPath string) (string, error) {
-	if consolePath != "" {
-		return consolePath, nil
-	}
-
-	if consoleSockPath == "" {
-		return "", nil
-	}
-
-	console, err := newConsole()
-	if err != nil {
-		return "", err
-	}
-	defer console.master.Close()
-
-	// Open the socket path provided by the caller
-	conn, err := net.Dial("unix", consoleSockPath)
-	if err != nil {
-		return "", err
-	}
-
-	uConn, ok := conn.(*net.UnixConn)
-	if !ok {
-		return "", fmt.Errorf("casting to *net.UnixConn failed")
-	}
-
-	socket, err := uConn.File()
-	if err != nil {
-		return "", err
-	}
-
-	// Send the parent fd through the provided socket
-	if err := utils.SendFd(socket, console.master.Name(), console.master.Fd()); err != nil {
-		return "", err
-	}
-
-	return console.slavePath, nil
 }
 
 func noNeedForOutput(detach bool, tty bool) bool {

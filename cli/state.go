@@ -41,6 +41,10 @@ instance of a container.`,
 }
 
 func state(ctx context.Context, containerID string) error {
+	if _, err := katautils.JoinNamespaces(containerID); err != nil {
+		return err
+	}
+
 	span, _ := katautils.Trace(ctx, "state")
 	defer span.Finish()
 

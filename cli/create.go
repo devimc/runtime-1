@@ -71,14 +71,10 @@ var createCLICommand = cli.Command{
 			return errors.New("invalid runtime config")
 		}
 
-		console, err := setupConsole(context.String("console"), context.String("console-socket"))
-		if err != nil {
-			return err
-		}
-
 		return create(ctx, context.Args().First(),
 			context.String("bundle"),
-			console,
+			context.String("console"),
+			context.String("console-socket"),
 			context.String("pid-file"),
 			true,
 			context.Bool("systemd-cgroup"),
@@ -87,7 +83,7 @@ var createCLICommand = cli.Command{
 	},
 }
 
-func create(ctx context.Context, containerID, bundlePath, console, pidFilePath string, detach, systemdCgroup bool,
+func create(ctx context.Context, containerID, bundlePath, console, consoleSocket, pidFilePath string, detach, systemdCgroup bool,
 	runtimeConfig oci.RuntimeConfig) error {
 	var err error
 
@@ -134,12 +130,12 @@ func create(ctx context.Context, containerID, bundlePath, console, pidFilePath s
 	var process vc.Process
 	switch containerType {
 	case vc.PodSandbox:
-		_, process, err = katautils.CreateSandbox(ctx, vci, ociSpec, runtimeConfig, rootFs, containerID, bundlePath, console, disableOutput, systemdCgroup, false)
+		_, process, err = katautils.CreateSandbox(ctx, vci, ociSpec, runtimeConfig, rootFs, containerID, bundlePath, console, consoleSocket, disableOutput, systemdCgroup, false)
 		if err != nil {
 			return err
 		}
 	case vc.PodContainer:
-		process, err = katautils.CreateContainer(ctx, vci, nil, ociSpec, rootFs, containerID, bundlePath, console, disableOutput, false)
+		process, err = katautils.CreateContainer(ctx, vci, nil, ociSpec, rootFs, containerID, bundlePath, console, consoleSocket, disableOutput, false)
 		if err != nil {
 			return err
 		}

@@ -190,10 +190,13 @@ func generateExecParams(context *cli.Context, specProcess *specs.Process) (execP
 }
 
 func execute(ctx context.Context, context *cli.Context) error {
+	containerID := context.Args().First()
+	if _, err := katautils.JoinNamespaces(containerID); err != nil {
+		return err
+	}
+
 	span, ctx := katautils.Trace(ctx, "execute")
 	defer span.Finish()
-
-	containerID := context.Args().First()
 
 	kataLog = kataLog.WithField("container", containerID)
 	setExternalLoggers(ctx, kataLog)
@@ -238,7 +241,7 @@ func execute(ctx context.Context, context *cli.Context) error {
 		return err
 	}
 
-	consolePath, err := setupConsole(params.console, params.consoleSock)
+	consolePath, err := katautils.SetupConsole(params.console, params.consoleSock)
 	if err != nil {
 		return err
 	}
