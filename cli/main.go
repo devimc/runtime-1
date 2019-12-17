@@ -432,6 +432,8 @@ func afterSubcommands(c *cli.Context) error {
 
 	katautils.StopTracing(ctx)
 
+	katautils.CloseChannels()
+
 	return nil
 }
 
