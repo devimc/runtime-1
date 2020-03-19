@@ -76,12 +76,11 @@ var runCLICommand = cli.Command{
 			context.String("console-socket"),
 			context.String("pid-file"),
 			context.Bool("detach"),
-			context.Bool("systemd-cgroup"),
 			runtimeConfig)
 	},
 }
 
-func run(ctx context.Context, containerID, bundle, console, consoleSocket, pidFile string, detach, systemdCgroup bool,
+func run(ctx context.Context, containerID, bundle, console, consoleSocket, pidFile string, detach bool,
 	runtimeConfig oci.RuntimeConfig) error {
 	span, ctx := katautils.Trace(ctx, "run")
 	defer span.Finish()
@@ -91,7 +90,7 @@ func run(ctx context.Context, containerID, bundle, console, consoleSocket, pidFi
 		return err
 	}
 
-	if err := create(ctx, containerID, bundle, consolePath, pidFile, detach, systemdCgroup, runtimeConfig); err != nil {
+	if err := create(ctx, containerID, bundle, consolePath, pidFile, detach, runtimeConfig); err != nil {
 		return err
 	}
 

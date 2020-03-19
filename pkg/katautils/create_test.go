@@ -293,7 +293,7 @@ func TestCreateSandboxConfigFail(t *testing.T) {
 
 	rootFs := vc.RootFs{Mounted: true}
 
-	_, _, err = CreateSandbox(context.Background(), testingImpl, spec, runtimeConfig, rootFs, testContainerID, bundlePath, testConsole, true, true, false)
+	_, _, err = CreateSandbox(context.Background(), testingImpl, spec, runtimeConfig, rootFs, testContainerID, bundlePath, testConsole, true, false)
 	assert.Error(err)
 }
 
@@ -329,7 +329,7 @@ func TestCreateSandboxFail(t *testing.T) {
 
 	rootFs := vc.RootFs{Mounted: true}
 
-	_, _, err = CreateSandbox(context.Background(), testingImpl, spec, runtimeConfig, rootFs, testContainerID, bundlePath, testConsole, true, true, false)
+	_, _, err = CreateSandbox(context.Background(), testingImpl, spec, runtimeConfig, rootFs, testContainerID, bundlePath, testConsole, true, false)
 	assert.Error(err)
 	assert.True(vcmock.IsMockError(err))
 }

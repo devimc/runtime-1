@@ -63,6 +63,8 @@ func state(ctx context.Context, containerID string) error {
 		return err
 	}
 
+	kataLog.Infof("########### state: %s", stateJSON)
+
 	// Print stateJSON to stdout
 	fmt.Fprintf(os.Stdout, "%s", stateJSON)
 

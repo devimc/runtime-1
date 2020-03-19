@@ -81,13 +81,12 @@ var createCLICommand = cli.Command{
 			console,
 			context.String("pid-file"),
 			true,
-			context.Bool("systemd-cgroup"),
 			runtimeConfig,
 		)
 	},
 }
 
-func create(ctx context.Context, containerID, bundlePath, console, pidFilePath string, detach, systemdCgroup bool,
+func create(ctx context.Context, containerID, bundlePath, console, pidFilePath string, detach bool,
 	runtimeConfig oci.RuntimeConfig) error {
 	var err error
 
@@ -134,7 +133,7 @@ func create(ctx context.Context, containerID, bundlePath, console, pidFilePath s
 	var process vc.Process
 	switch containerType {
 	case vc.PodSandbox:
-		_, process, err = katautils.CreateSandbox(ctx, vci, ociSpec, runtimeConfig, rootFs, containerID, bundlePath, console, disableOutput, systemdCgroup, false)
+		_, process, err = katautils.CreateSandbox(ctx, vci, ociSpec, runtimeConfig, rootFs, containerID, bundlePath, console, disableOutput, false)
 		if err != nil {
 			return err
 		}

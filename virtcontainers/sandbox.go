@@ -115,9 +115,6 @@ type SandboxConfig struct {
 	// for calling Release() to release the memory resources.
 	Stateful bool
 
-	// SystemdCgroup enables systemd cgroup support
-	SystemdCgroup bool
-
 	// SandboxCgroupOnly enables cgroup only at podlevel in the host
 	SandboxCgroupOnly bool
 
@@ -2103,7 +2100,7 @@ func (s *Sandbox) setupSandboxCgroup() error {
 
 	s.Logger().WithField("hasCRIContainerType", s.config.HasCRIContainerType).Debug("Setting sandbox cgroup")
 
-	s.state.CgroupPath, err = vccgroups.ValidCgroupPath(spec.Linux.CgroupsPath, s.config.SystemdCgroup)
+	s.state.CgroupPath, err = vccgroups.ValidCgroupPath(spec.Linux.CgroupsPath)
 	if err != nil {
 		return fmt.Errorf("Invalid cgroup path: %v", err)
 	}

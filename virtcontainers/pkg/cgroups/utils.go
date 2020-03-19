@@ -33,12 +33,12 @@ func RenameCgroupPath(path string) (string, error) {
 
 // validCgroupPath returns a valid cgroup path.
 // see https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#cgroups-path
-func ValidCgroupPath(path string, systemdCgroup bool) (string, error) {
+func ValidCgroupPath(path string) (string, error) {
 	if IsSystemdCgroup(path) {
 		return path, nil
 	}
 
-	if systemdCgroup {
+	if UseSystemdCgroup() {
 		return "", fmt.Errorf("malformed systemd path '%v': expected to be of form 'slice:prefix:name'", path)
 	}
 

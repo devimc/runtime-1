@@ -132,6 +132,11 @@ func hypervisorDevices() []specs.LinuxDeviceCgroup {
 // New creates a new CgroupManager
 func New(config *Config) (*Manager, error) {
 	var err error
+
+	if IsSystemdCgroup(config.CgroupPath) {
+		EnableSystemdCgroup()
+	}
+
 	useSystemdCgroup := UseSystemdCgroup()
 
 	devices := []specs.LinuxDeviceCgroup{}
@@ -158,7 +163,7 @@ func New(config *Config) (*Manager, error) {
 			cgroupsLogger.Warn("cgroups have not been created and cgroup path is empty")
 		}
 
-		newSpec.Linux.CgroupsPath, err = ValidCgroupPath(config.CgroupPath, useSystemdCgroup)
+		newSpec.Linux.CgroupsPath, err = ValidCgroupPath(config.CgroupPath)
 		if err != nil {
 			return nil, fmt.Errorf("Invalid cgroup path: %v", err)
 		}
@@ -246,6 +251,11 @@ func (m *Manager) moveToParent() error {
 	m.Lock()
 	defer m.Unlock()
 	for _, cgroupPath := range m.mgr.GetPaths() {
+		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
+			m.logger().WithField("cgroup-path", cgroupPath).Debug("cgroup already removed")
+			continue
+		}
+
 		pids, err := readPids(cgroupPath)
 		if err != nil {
 			return err

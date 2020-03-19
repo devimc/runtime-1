@@ -105,11 +105,11 @@ func SetEphemeralStorageType(ociSpec specs.Spec) specs.Spec {
 
 // CreateSandbox create a sandbox container
 func CreateSandbox(ctx context.Context, vci vc.VC, ociSpec specs.Spec, runtimeConfig oci.RuntimeConfig, rootFs vc.RootFs,
-	containerID, bundlePath, console string, disableOutput, systemdCgroup, builtIn bool) (_ vc.VCSandbox, _ vc.Process, err error) {
+	containerID, bundlePath, console string, disableOutput, builtIn bool) (_ vc.VCSandbox, _ vc.Process, err error) {
 	span, ctx := Trace(ctx, "createSandbox")
 	defer span.Finish()
 
-	sandboxConfig, err := oci.SandboxConfig(ociSpec, runtimeConfig, bundlePath, containerID, console, disableOutput, systemdCgroup)
+	sandboxConfig, err := oci.SandboxConfig(ociSpec, runtimeConfig, bundlePath, containerID, console, disableOutput)
 	if err != nil {
 		return nil, vc.Process{}, err
 	}

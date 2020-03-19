@@ -72,9 +72,6 @@ func isRootlessFunc() bool {
 	// auto-detect if nil
 	if isRootless == nil {
 		SetRootless(true)
-		// --rootless and --systemd-cgroup options must honoured
-		// but with the current implementation this is not possible
-		// https://github.com/kata-containers/runtime/issues/2412
 		if os.Geteuid() != 0 {
 			return true
 		}

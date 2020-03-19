@@ -238,9 +238,6 @@ type SandboxConfig struct {
 	// for calling Release() to release the memory resources.
 	Stateful bool
 
-	// SystemdCgroup enables systemd cgroup support
-	SystemdCgroup bool
-
 	// SandboxCgroupOnly enables cgroup only at podlevel in the host
 	SandboxCgroupOnly bool
 

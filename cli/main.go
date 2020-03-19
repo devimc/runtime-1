@@ -22,6 +22,7 @@ import (
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	exp "github.com/kata-containers/runtime/virtcontainers/experimental"
 	vf "github.com/kata-containers/runtime/virtcontainers/factory"
+	"github.com/kata-containers/runtime/virtcontainers/pkg/cgroups"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/rootless"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
@@ -281,8 +282,12 @@ func beforeSubcommands(c *cli.Context) error {
 	if r != nil {
 		rootless.SetRootless(*r)
 	}
-	// Support --systed-cgroup
-	// Issue: https://github.com/kata-containers/runtime/issues/2428
+
+	if c.GlobalBool("systemd-cgroup") {
+		cgroups.EnableSystemdCgroup()
+		// want systemd cgroups, then disable rootless
+		rootless.SetRootless(false)
+	}
 
 	ignoreConfigLogs := false
 	var traceRootSpan string
